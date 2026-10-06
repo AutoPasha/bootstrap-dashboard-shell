@@ -4,7 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard Shell</title>
-  <meta name="description" content="Открытый demo оболочки кабинета на Bootstrap 5: меню, Offcanvas и крошки из одного реестра маршрутов, переключатель контекста.">
+  <meta name="description" content="Открытый demo оболочки кабинета на Bootstrap 5: меню, Offcanvas и крошки из одного реестра маршрутов, переключатель контекста, поиск по разделам.">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    // Тема ставится до отрисовки, чтобы страница не мигала светлой.
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem('demo-shell:theme'); } catch (e) {}
+      var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+      try { if (localStorage.getItem('demo-shell:collapsed') === '1') document.documentElement.classList.add('is-collapsed'); } catch (e) {}
+    })();
+  </script>
   <link rel="preload" href="vendor/inter-4/inter-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="vendor/bootstrap-5.3.8/bootstrap.min.css">
   <link rel="stylesheet" href="vendor/bootstrap-icons-1.13.1/bootstrap-icons.min.css">
@@ -26,9 +37,15 @@
         <div class="offcanvas-body sidebar-body">
           <nav id="nav" aria-label="Основное меню"></nav>
           <div class="sidebar-foot">
-            <a class="sidebar-source" href="https://github.com/AutoPasha/bootstrap-dashboard-shell">
-              <i class="bi bi-github" aria-hidden="true"></i> Исходный код
+            <a class="sidebar-tool" href="https://github.com/AutoPasha/bootstrap-dashboard-shell" title="Исходный код на GitHub">
+              <i class="bi bi-github" aria-hidden="true"></i><span class="tool-text">Исходный код</span>
             </a>
+            <button type="button" class="sidebar-tool d-sm-none" data-theme-toggle aria-pressed="false">
+              <i class="bi bi-circle-half" aria-hidden="true"></i><span class="tool-text">Тёмная тема</span>
+            </button>
+            <button type="button" class="sidebar-tool d-none d-lg-flex" id="collapse-toggle" aria-pressed="false" title="Свернуть меню">
+              <i class="bi bi-chevron-double-left collapse-icon" aria-hidden="true"></i><span class="tool-text">Свернуть меню</span>
+            </button>
           </div>
         </div>
       </div>
@@ -45,6 +62,17 @@
           <ol class="breadcrumb" id="crumbs"></ol>
         </nav>
 
+        <button type="button" class="search-button" id="search-button" aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <span class="search-label">Поиск по разделам</span>
+          <span class="visually-hidden d-xl-none">Поиск по разделам</span>
+          <kbd class="search-kbd">Ctrl K</kbd>
+        </button>
+
+        <button type="button" class="topbar-icon theme-toggle" id="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Тёмная тема">
+          <i class="bi bi-moon-stars" aria-hidden="true"></i><i class="bi bi-sun" aria-hidden="true"></i>
+        </button>
+
         <div class="dropdown topbar-context">
           <button type="button" class="btn context-button" id="context-button"
                   data-bs-toggle="dropdown" aria-expanded="false">
@@ -59,7 +87,7 @@
           <ul class="dropdown-menu dropdown-menu-end context-menu" id="context-menu" aria-labelledby="context-button"></ul>
         </div>
 
-        <a class="topbar-user" href="#/app/account" id="topbar-user" aria-label="Профиль">
+        <a class="topbar-user" href="#/app/account" aria-label="Профиль" title="Профиль">
           <span class="avatar avatar-blue" aria-hidden="true">АД</span>
         </a>
       </header>
@@ -68,6 +96,28 @@
         <h1 id="page-title" class="page-title" tabindex="-1"></h1>
         <div id="page"></div>
       </main>
+    </div>
+  </div>
+
+  <div class="modal palette" id="palette" tabindex="-1" aria-labelledby="palette-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <h2 class="visually-hidden" id="palette-label">Поиск по разделам</h2>
+        <div class="palette-search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input class="palette-input" id="palette-input" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Раздел, пространство или действие"
+                 role="combobox" aria-expanded="true" aria-controls="palette-list" aria-autocomplete="list"
+                 aria-labelledby="palette-label">
+          <kbd>Esc</kbd>
+        </div>
+        <ul class="palette-list" id="palette-list" role="listbox" aria-label="Результаты"></ul>
+        <div class="palette-foot" aria-hidden="true">
+          <span><kbd>↑</kbd> <kbd>↓</kbd> выбрать</span>
+          <span><kbd>Enter</kbd> открыть</span>
+          <span><kbd>Esc</kbd> закрыть</span>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -6,8 +6,15 @@ import { contexts, user } from './data.js';
 export const esc = (value) =>
   String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
-// Состояние страниц на время сеанса (demo): завершённые сеансы входа.
-export const ui = { endedSessions: new Set() };
+// Состояние страниц на время сеанса (demo): отмеченные дела, фильтр задач,
+// завершённые сеансы входа.
+export const ui = { doneToday: new Set(), taskFilter: 'all', endedSessions: new Set() };
+
+const FILTERS = [
+  { id: 'all', label: 'Все', test: () => true },
+  { id: 'mine', label: 'Мои', test: (t) => t.who.name === user.name },
+  { id: 'open', label: 'Не готовые', test: (t) => t.tone !== 'success' },
+];
 
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const plural = (n, one, few, many) => {
@@ -129,7 +136,14 @@ export const pages = {
         ${card(
           'На сегодня',
           `<ul class="rows">${ctx.today
-            .map((t) => `<li class="row-item"><span class="time">${esc(t.time)}</span><span>${esc(t.text)}</span></li>`)
+            .map((t, i) => {
+              const key = `${ctx.id}:${i}`;
+              const done = ui.doneToday.has(key);
+              return `<li class="row-item today-item${done ? ' is-done' : ''}">
+                <input class="form-check-input" type="checkbox" id="today-${i}" data-today="${esc(key)}"${done ? ' checked' : ''}>
+                <label for="today-${i}"><span class="time">${esc(t.time)}</span><span class="today-text">${esc(t.text)}</span></label>
+              </li>`;
+            })
             .join('')}</ul>
           <h3 class="panel-subtitle">Мои задачи</h3>
           ${mine.length ? taskRows(mine) : '<p class="text-muted-2 px-3 pb-3 mb-0">Задач на вас нет.</p>'}`,
@@ -159,21 +173,33 @@ export const pages = {
     </div>`;
   },
 
-  '/app/overview': (ctx) => `
+  '/app/overview': (ctx) => {
+    const filter = FILTERS.find((f) => f.id === ui.taskFilter) ?? FILTERS[0];
+    const tasks = ctx.tasks.filter(filter.test);
+    const total = ctx.closedByDay.reduce((a, b) => a + b, 0);
+    return `
     <p class="page-lead">Сводка по пространству «${esc(ctx.short)}» за последние две недели.</p>
     <div class="row g-3 mb-3">${ctx.kpis.map(kpi).join('')}</div>
     <div class="row g-3">
-      <div class="col-12 col-xl-8">${card('Закрыто задач по дням', barChart(ctx.closedByDay))}</div>
+      <div class="col-12 col-xl-8">${card('Закрыто задач по дням', barChart(ctx.closedByDay), {
+        action: `<span class="chart-total">за 14 дней <strong>${total}</strong></span>`,
+      })}</div>
       <div class="col-12 col-xl-4">${card('Последние события', eventRows(ctx.events), { flush: true })}</div>
       <div class="col-12">
         ${card(
-          'Задачи в работе',
+          'Задачи',
           `<div class="rows-head task" aria-hidden="true"><span>Задача</span><span>Исполнитель</span><span>Статус</span><span>Срок</span></div>
-          ${taskRows(ctx.tasks)}`,
-          { flush: true },
+          ${tasks.length ? taskRows(tasks) : '<p class="empty">Под этот фильтр задач нет.</p>'}`,
+          {
+            flush: true,
+            action: `<div class="segmented" role="group" aria-label="Какие задачи показать">${FILTERS.map(
+              (f) => `<button type="button" class="btn" data-task-filter="${f.id}" aria-pressed="${f.id === filter.id}">${f.label}</button>`,
+            ).join('')}</div>`,
+          },
         )}
       </div>
-    </div>`,
+    </div>`;
+  },
 
   '/app/workspaces': (ctx) => `
     <p class="page-lead">Пространства, где у вас есть доступ. Адреса страниц при переключении остаются прежними.</p>
@@ -260,6 +286,7 @@ export const pages = {
     </form>`,
 
   '/app/account': (ctx) => `
+    <p class="page-lead">Профиль общий для всех пространств, роль в каждом своя.</p>
     <div class="row g-3">
       <div class="col-12 col-lg-4">
         <div class="card panel profile h-100">
@@ -267,7 +294,6 @@ export const pages = {
           <div class="fs-5 fw-semibold mt-3">${esc(user.name)}</div>
           <div class="text-muted-2">${esc(user.email)}</div>
           <div class="mt-3"><span class="badge status status-primary" data-role>${esc(ctx.role)} · ${esc(ctx.short)}</span></div>
-          <p class="text-muted-2 small mt-3 mb-0">Профиль общий для всех пространств, роль у каждого своя.</p>
         </div>
       </div>
       <div class="col-12 col-lg-8">
@@ -297,6 +323,7 @@ export const pages = {
   '/app/account/security': () => {
     const sessions = user.sessions.filter((s) => !ui.endedSessions.has(s.id));
     return `
+    <p class="page-lead">Вход с подтверждением, пароль и устройства, на которых вы сейчас вошли.</p>
     <div class="row g-3">
       <div class="col-12 col-lg-6">
         ${card(

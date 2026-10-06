@@ -1,5 +1,6 @@
-// Оболочка: роутер, меню, крошки, переключатель контекста и фокус.
-// Всё, что видно в навигации, берётся из реестра (routes.js) через nav.js.
+// Оболочка: роутер, меню, крошки, переключатель контекста, поиск по разделам,
+// тема и фокус. Всё, что видно в навигации, берётся из реестра (routes.js)
+// через nav.js.
 
 import { registry, HOME, FALLBACK } from './routes.js';
 import { buildNav, breadcrumbs, findRoute, isAvailable } from './nav.js';
@@ -9,6 +10,7 @@ import { pages, ui, esc } from './pages.js';
 
 const APP_NAME = 'Dashboard Shell';
 const $ = (selector) => document.querySelector(selector);
+const root = document.documentElement;
 
 const el = {
   sidebar: $('#sidebar'),
@@ -23,11 +25,17 @@ const el = {
   ctxName: $('#context-name'),
   ctxRole: $('#context-role'),
   ctxMenu: $('#context-menu'),
+  collapse: $('#collapse-toggle'),
+  search: $('#search-button'),
+  palette: $('#palette'),
+  paletteInput: $('#palette-input'),
+  paletteList: $('#palette-list'),
   announcer: $('#announcer'),
   tooltip: $('#tooltip'),
 };
 
 const offcanvas = window.bootstrap.Offcanvas.getOrCreateInstance(el.sidebar);
+const paletteModal = window.bootstrap.Modal.getOrCreateInstance(el.palette);
 let currentPath = null;
 // Куда вернуть фокус, когда Offcanvas закроется: на кнопку меню (Esc, крестик)
 // или на h1 новой страницы (переход по пункту меню).
@@ -61,7 +69,7 @@ function renderNav(context, activePath) {
             const trail = !active && chain.has(item.path) && item.path !== HOME;
             return `<li class="nav-item">
               <a class="nav-link${active ? ' active' : ''}${trail ? ' is-trail' : ''}"
-                 href="${item.href}"${active ? ' aria-current="page"' : ''}>
+                 href="${item.href}" title="${esc(item.title)}"${active ? ' aria-current="page"' : ''}>
                 <i class="bi bi-${esc(item.icon)}" aria-hidden="true"></i>
                 <span class="nav-text">${esc(item.title)}</span>
                 ${item.badge ? `<span class="nav-badge">${item.badge}<span class="visually-hidden"> новых</span></span>` : ''}
@@ -79,7 +87,8 @@ function renderCrumbs(activePath) {
   el.crumbs.innerHTML = chain
     .map((c, i) => {
       // корень показываем домиком, промежуточные на самом узком экране прячем
-      const label = i === 0 ? `<i class="bi bi-house-door" aria-hidden="true"></i><span class="crumb-root">${esc(c.title)}</span>` : esc(c.title);
+      const label =
+        i === 0 ? `<i class="bi bi-house-door" aria-hidden="true"></i><span class="crumb-root">${esc(c.title)}</span>` : esc(c.title);
       const cls = `breadcrumb-item${i === 0 ? ' is-root' : ''}${i > 0 && i < last ? ' is-middle' : ''}`;
       return i === last
         ? `<li class="${cls} active" aria-current="page">${label}</li>`
@@ -108,6 +117,7 @@ function renderContextSwitcher(context) {
 function renderPage(context, route) {
   el.title.textContent = route.title;
   document.title = `${route.title} · ${APP_NAME}`;
+  el.tooltip.hidden = true;
   el.page.innerHTML = pages[route.path](context, { nav: buildNav(registry, context) });
 }
 
@@ -120,7 +130,7 @@ function render() {
   renderPage(context, route);
 }
 
-// ---------- фокус ----------
+// ---------- фокус и объявления ----------
 
 function focusTitle() {
   window.scrollTo(0, 0);
@@ -181,6 +191,203 @@ shellStore.subscribe(() => {
   announce(`Пространство «${context.name}». Данные страницы обновлены.`);
 });
 
+// ---------- тема и свёрнутое меню ----------
+
+const isDark = () => root.getAttribute('data-bs-theme') === 'dark';
+
+function save(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // приватный режим Safari: живём без запоминания
+  }
+}
+
+function syncTheme() {
+  document.querySelectorAll('[data-theme-toggle]').forEach((b) => b.setAttribute('aria-pressed', String(isDark())));
+}
+
+function setTheme(dark) {
+  root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+  save('demo-shell:theme', dark ? 'dark' : 'light');
+  syncTheme();
+  announce(dark ? 'Тёмная тема' : 'Светлая тема');
+}
+
+const isCollapsed = () => root.classList.contains('is-collapsed');
+
+function syncCollapse() {
+  const on = isCollapsed();
+  el.collapse.setAttribute('aria-pressed', String(on));
+  el.collapse.title = on ? 'Развернуть меню' : 'Свернуть меню';
+  el.collapse.querySelector('.tool-text').textContent = on ? 'Развернуть меню' : 'Свернуть меню';
+}
+
+function setCollapsed(on) {
+  root.classList.toggle('is-collapsed', on);
+  save('demo-shell:collapsed', on ? '1' : '0');
+  syncCollapse();
+}
+
+// ---------- поиск по разделам (Ctrl+K) ----------
+// Пункты те же, что в меню: buildNav по текущему контексту. Плюс пространства и действия.
+
+const palette = { items: [], active: 0, opener: null, pending: null };
+const norm = (s) => s.toLowerCase().replace(/ё/g, 'е');
+
+function paletteItems() {
+  const context = currentContext();
+  const routes = buildNav(registry, context).flatMap((section) =>
+    section.items.map((item) => ({
+      group: 'Разделы',
+      icon: item.icon,
+      label: item.title,
+      hint: item.path === currentPath ? 'вы здесь' : section.title,
+      keys: `${item.title} ${section.title} ${item.path}`,
+      run: () => (item.path === currentPath ? focusTitle() : go(item.path)),
+    })),
+  );
+  const spaces = contexts
+    .filter((c) => c.id !== context.id)
+    .map((c) => ({
+      group: 'Пространства',
+      icon: 'arrow-left-right',
+      label: `Перейти в «${c.short}»`,
+      hint: c.role,
+      keys: `${c.name} ${c.short} пространство контекст`,
+      run: () => {
+        switchContext(c.id);
+        focusTitle();
+      },
+    }));
+  const actions = [
+    {
+      group: 'Действия',
+      icon: 'circle-half',
+      label: isDark() ? 'Светлая тема' : 'Тёмная тема',
+      hint: '',
+      keys: 'тема тёмная светлая ночь dark light',
+      run: () => setTheme(!isDark()),
+      keepFocus: true,
+    },
+  ];
+  if (window.matchMedia('(min-width: 992px)').matches) {
+    actions.push({
+      group: 'Действия',
+      icon: 'layout-sidebar',
+      label: isCollapsed() ? 'Развернуть меню' : 'Свернуть меню',
+      hint: '',
+      keys: 'меню свернуть развернуть sidebar',
+      run: () => setCollapsed(!isCollapsed()),
+      keepFocus: true,
+    });
+  }
+  return [...routes, ...spaces, ...actions];
+}
+
+function renderPalette() {
+  const q = norm(el.paletteInput.value.trim());
+  palette.items = paletteItems().filter((item) => !q || norm(`${item.label} ${item.keys}`).includes(q));
+  palette.active = Math.min(palette.active, Math.max(0, palette.items.length - 1));
+
+  if (!palette.items.length) {
+    el.paletteList.innerHTML = '<li class="palette-empty" role="presentation">Ничего не нашлось</li>';
+    el.paletteInput.removeAttribute('aria-activedescendant');
+    return;
+  }
+
+  let group = '';
+  el.paletteList.innerHTML = palette.items
+    .map((item, i) => {
+      const head = item.group !== group ? `<li class="palette-group" role="presentation">${esc(item.group)}</li>` : '';
+      group = item.group;
+      return `${head}<li class="palette-option${i === palette.active ? ' is-active' : ''}" role="option"
+        id="palette-option-${i}" data-index="${i}" aria-selected="${i === palette.active}">
+        <i class="bi bi-${esc(item.icon)}" aria-hidden="true"></i>
+        <span>${esc(item.label)}</span>
+        ${item.hint ? `<span class="palette-hint">${esc(item.hint)}</span>` : ''}
+      </li>`;
+    })
+    .join('');
+  el.paletteInput.setAttribute('aria-activedescendant', `palette-option-${palette.active}`);
+  el.paletteList.querySelector('.is-active')?.scrollIntoView({ block: 'nearest' });
+}
+
+function openPalette() {
+  if (el.palette.classList.contains('show')) return;
+  palette.opener = document.activeElement;
+  palette.pending = null;
+  palette.active = 0;
+  el.paletteInput.value = '';
+  renderPalette();
+  if (el.sidebar.classList.contains('show')) offcanvas.hide();
+  paletteModal.show();
+}
+
+function choose(index) {
+  const item = palette.items[index];
+  if (!item) return;
+  palette.pending = item;
+  paletteModal.hide();
+}
+
+el.palette.addEventListener('shown.bs.modal', () => el.paletteInput.focus());
+el.palette.addEventListener('hidden.bs.modal', () => {
+  const item = palette.pending;
+  palette.pending = null;
+  if (item) item.run();
+  if (!item || item.keepFocus) palette.opener?.focus?.();
+});
+
+el.paletteInput.addEventListener('input', () => {
+  palette.active = 0;
+  renderPalette();
+});
+
+el.paletteInput.addEventListener('keydown', (event) => {
+  const count = palette.items.length;
+  if (!count) return;
+  const moves = { ArrowDown: 1, ArrowUp: -1 };
+  if (event.key in moves) {
+    event.preventDefault();
+    palette.active = (palette.active + moves[event.key] + count) % count;
+    renderPalette();
+  } else if (event.key === 'Home' || event.key === 'End') {
+    event.preventDefault();
+    palette.active = event.key === 'Home' ? 0 : count - 1;
+    renderPalette();
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    choose(palette.active);
+  }
+});
+
+el.paletteList.addEventListener('click', (event) => {
+  const option = event.target.closest('[data-index]');
+  if (option) choose(Number(option.dataset.index));
+});
+
+el.paletteList.addEventListener('pointermove', (event) => {
+  const option = event.target.closest('[data-index]');
+  if (option && Number(option.dataset.index) !== palette.active) {
+    palette.active = Number(option.dataset.index);
+    renderPalette();
+  }
+});
+
+el.search.addEventListener('click', openPalette);
+
+document.addEventListener('keydown', (event) => {
+  const typing = event.target.closest?.('input, textarea, select, [contenteditable="true"]');
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    openPalette();
+  } else if (event.key === '/' && !typing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault();
+    openPalette();
+  }
+});
+
 // ---------- события ----------
 
 window.addEventListener('hashchange', onRoute);
@@ -198,13 +405,13 @@ el.toggle.addEventListener('click', () => {
 
 el.sidebar.addEventListener('show.bs.offcanvas', () => el.toggle.setAttribute('aria-expanded', 'true'));
 el.sidebar.addEventListener('shown.bs.offcanvas', () => {
-  // открыли меню — фокус на текущий пункт, чтобы стрелять Tab от него
+  // открыли меню — фокус на текущий пункт, чтобы идти Tab от него
   el.nav.querySelector('[aria-current="page"]')?.focus();
 });
 el.sidebar.addEventListener('hidden.bs.offcanvas', () => {
   el.toggle.setAttribute('aria-expanded', 'false');
   if (focusAfterClose === 'title') focusTitle();
-  else if (el.toggle.offsetParent !== null) el.toggle.focus();
+  else if (focusAfterClose === 'toggle' && el.toggle.offsetParent !== null) el.toggle.focus();
   focusAfterClose = 'toggle';
 });
 
@@ -223,6 +430,11 @@ el.nav.addEventListener('click', (event) => {
 });
 
 document.addEventListener('click', (event) => {
+  const themeButton = event.target.closest('[data-theme-toggle]');
+  if (themeButton) {
+    setTheme(!isDark());
+    return;
+  }
   const button = event.target.closest('[data-switch-context]');
   if (!button) return;
   const fromMenu = el.ctxMenu.contains(button);
@@ -232,20 +444,38 @@ document.addEventListener('click', (event) => {
   else focusTitle();
 });
 
+el.collapse.addEventListener('click', () => setCollapsed(!isCollapsed()));
+
 el.page.addEventListener('submit', (event) => {
   event.preventDefault();
   const status = event.target.querySelector('[data-form-status]');
   if (status) status.textContent = 'Сохранено в demo, на сервер ничего не ушло.';
 });
 
+el.page.addEventListener('change', (event) => {
+  const box = event.target.closest('[data-today]');
+  if (!box) return;
+  if (box.checked) ui.doneToday.add(box.dataset.today);
+  else ui.doneToday.delete(box.dataset.today);
+  box.closest('.today-item').classList.toggle('is-done', box.checked);
+});
+
 el.page.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-end-session]');
-  if (!button) return;
-  ui.endedSessions.add(button.dataset.endSession);
-  render();
-  announce('Сеанс завершён.');
-  // кнопка исчезла вместе со строкой — фокус на заголовок списка
-  el.page.querySelector('#sessions-title')?.focus();
+  const filter = event.target.closest('[data-task-filter]');
+  if (filter) {
+    ui.taskFilter = filter.dataset.taskFilter;
+    render();
+    el.page.querySelector(`[data-task-filter="${ui.taskFilter}"]`)?.focus();
+    return;
+  }
+  const end = event.target.closest('[data-end-session]');
+  if (end) {
+    ui.endedSessions.add(end.dataset.endSession);
+    render();
+    announce('Сеанс завершён.');
+    // кнопка исчезла вместе со строкой — фокус на заголовок списка
+    el.page.querySelector('#sessions-title')?.focus();
+  }
 });
 
 // Подсказка над столбцом графика: hit-зона — вся высота столбца.
@@ -264,4 +494,6 @@ el.page.addEventListener('pointerout', (event) => {
   if (event.target.closest('[data-tip]') && !event.relatedTarget?.closest?.('[data-tip]')) el.tooltip.hidden = true;
 });
 
+syncTheme();
+syncCollapse();
 onRoute();

@@ -5,13 +5,13 @@ import { test, expect } from '@playwright/test';
 
 const title = (page) => page.locator('#page-title');
 const contextName = (page) => page.locator('#context-name');
-const overviewBadge = (page) => page.locator('#nav a[href="#/app/overview"] .badge');
+const overviewBadge = (page) => page.locator('#nav a[href="#/app/overview"] .nav-badge');
 
 test('смена контекста с клавиатуры меняет данные, но не адрес', async ({ page }) => {
   await page.goto('/#/app/overview');
   await expect(contextName(page)).toHaveText('Команда «Север»');
   await expect(page.locator('[data-stat]').first()).toHaveText('12');
-  await expect(overviewBadge(page)).toHaveText('3');
+  await expect(overviewBadge(page)).toHaveText(/^3 /);
 
   const button = page.locator('#context-button');
   await button.focus();
@@ -26,7 +26,7 @@ test('смена контекста с клавиатуры меняет дан�
   await expect(page).toHaveURL(/#\/app\/overview$/);
   await expect(title(page)).toHaveText('Обзор');
   await expect(page.locator('[data-stat]').first()).toHaveText('27');
-  await expect(overviewBadge(page)).toHaveText('7');
+  await expect(overviewBadge(page)).toHaveText(/^7 /);
   await expect(button).toBeFocused();
   await expect(page.locator('#announcer')).toContainText('Команда «Юг»');
 });

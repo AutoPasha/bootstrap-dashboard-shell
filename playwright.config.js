@@ -17,11 +17,12 @@ const matrix = Object.entries(BROWSERS).flatMap(([browser, device]) =>
   })),
 );
 
-// Сценарии контекста: по каждому браузеру на телефоне и на десктопе.
-const context = Object.entries(BROWSERS).flatMap(([browser, device]) =>
+// Сценарии оболочки (контекст, поиск, тема, свёрнутое меню): по каждому
+// браузеру на телефоне и на ноутбуке.
+const scenarios = Object.entries(BROWSERS).flatMap(([browser, device]) =>
   [375, 1280].map((width) => ({
-    name: `context-${browser}-${width}`,
-    testMatch: /context\.spec\.js/,
+    name: `scenarios-${browser}-${width}`,
+    testMatch: /(context|features)\.spec\.js/,
     use: { ...device, viewport: { width, height: 800 } },
   })),
 );
@@ -43,5 +44,5 @@ export default defineConfig({
     url: 'http://127.0.0.1:4173/',
     reuseExistingServer: !process.env.CI,
   },
-  projects: [...matrix, ...context],
+  projects: [...matrix, ...scenarios],
 });

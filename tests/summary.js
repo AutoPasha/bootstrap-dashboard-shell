@@ -17,6 +17,7 @@ let contextAll = 0;
 function walk(suite) {
   for (const spec of suite.specs ?? []) {
     for (const t of spec.tests) {
+      if (t.status === 'skipped') continue; // свёрнутое меню на телефоне не проверяется по смыслу
       const ok = t.status === 'expected';
       if (spec.file.endsWith('matrix.spec.js')) cells.set(`${spec.title}|${t.projectName}`, ok);
       else {
@@ -43,7 +44,7 @@ const lines = [
   `|---|${columns.map(() => ':-:').join('|')}|`,
   ...registry.routes.map((r) => `| \`${r.path}\` | ${columns.map((c) => mark(r.path, c)).join(' | ')} |`),
   '',
-  `Сценарии контекста: ${contextOk} из ${contextAll}.`,
+  `Сценарии оболочки (контекст, поиск, тема, свёрнутое меню): ${contextOk} из ${contextAll}.`,
 ];
 const text = lines.join('\n');
 console.log(text);

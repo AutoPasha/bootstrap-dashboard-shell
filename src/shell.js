@@ -5,7 +5,7 @@ import { registry, HOME, FALLBACK } from './routes.js';
 import { buildNav, breadcrumbs, findRoute, isAvailable } from './nav.js';
 import { shellStore, currentContext } from './store.js';
 import { contexts } from './data.js';
-import { pages } from './pages.js';
+import { pages, ui, esc } from './pages.js';
 
 const APP_NAME = 'Dashboard Shell';
 const $ = (selector) => document.querySelector(selector);
@@ -19,10 +19,12 @@ const el = {
   page: $('#page'),
   skip: $('.skip-link'),
   ctxButton: $('#context-button'),
+  ctxAvatar: $('#context-avatar'),
   ctxName: $('#context-name'),
   ctxRole: $('#context-role'),
   ctxMenu: $('#context-menu'),
   announcer: $('#announcer'),
+  tooltip: $('#tooltip'),
 };
 
 const offcanvas = window.bootstrap.Offcanvas.getOrCreateInstance(el.sidebar);
@@ -30,9 +32,6 @@ let currentPath = null;
 // Куда вернуть фокус, когда Offcanvas закроется: на кнопку меню (Esc, крестик)
 // или на h1 новой страницы (переход по пункту меню).
 let focusAfterClose = 'toggle';
-
-const esc = (value) =>
-  String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
 // ---------- маршрут ----------
 
@@ -55,17 +54,17 @@ function renderNav(context, activePath) {
     .map(
       (section) => `
       <h2 class="nav-section-title">${esc(section.title)}</h2>
-      <ul class="nav nav-pills flex-column mb-3">
+      <ul class="nav flex-column nav-list">
         ${section.items
           .map((item) => {
             const active = item.path === activePath;
             const trail = !active && chain.has(item.path) && item.path !== HOME;
             return `<li class="nav-item">
-              <a class="nav-link d-flex align-items-center gap-2${active ? ' active' : ''}${trail ? ' is-trail' : ''}"
+              <a class="nav-link${active ? ' active' : ''}${trail ? ' is-trail' : ''}"
                  href="${item.href}"${active ? ' aria-current="page"' : ''}>
                 <i class="bi bi-${esc(item.icon)}" aria-hidden="true"></i>
-                <span class="me-auto">${esc(item.title)}</span>
-                ${item.badge ? `<span class="badge rounded-pill text-bg-secondary" aria-label="${item.badge} новых">${item.badge}</span>` : ''}
+                <span class="nav-text">${esc(item.title)}</span>
+                ${item.badge ? `<span class="nav-badge">${item.badge}<span class="visually-hidden"> новых</span></span>` : ''}
               </a></li>`;
           })
           .join('')}
@@ -76,26 +75,34 @@ function renderNav(context, activePath) {
 
 function renderCrumbs(activePath) {
   const chain = breadcrumbs(registry, activePath);
+  const last = chain.length - 1;
   el.crumbs.innerHTML = chain
-    .map((c, i) =>
-      i === chain.length - 1
-        ? `<li class="breadcrumb-item active" aria-current="page">${esc(c.title)}</li>`
-        : `<li class="breadcrumb-item"><a href="${c.href}">${esc(c.title)}</a></li>`,
-    )
+    .map((c, i) => {
+      // корень показываем домиком, промежуточные на самом узком экране прячем
+      const label = i === 0 ? `<i class="bi bi-house-door" aria-hidden="true"></i><span class="crumb-root">${esc(c.title)}</span>` : esc(c.title);
+      const cls = `breadcrumb-item${i === 0 ? ' is-root' : ''}${i > 0 && i < last ? ' is-middle' : ''}`;
+      return i === last
+        ? `<li class="${cls} active" aria-current="page">${label}</li>`
+        : `<li class="${cls}"><a href="${c.href}">${label}</a></li>`;
+    })
     .join('');
 }
 
 function renderContextSwitcher(context) {
   el.ctxName.textContent = context.name;
   el.ctxRole.textContent = context.role;
-  el.ctxMenu.innerHTML = contexts
+  el.ctxAvatar.textContent = context.initials;
+  el.ctxAvatar.className = `avatar avatar-square avatar-sm avatar-${context.tone}`;
+  el.ctxMenu.innerHTML = `<li><h2 class="dropdown-header">Пространства</h2></li>${contexts
     .map(
-      (c) => `<li><button type="button" class="dropdown-item d-flex flex-column${c.id === context.id ? ' active' : ''}"
+      (c) => `<li><button type="button" class="dropdown-item context-item${c.id === context.id ? ' is-current' : ''}"
         data-switch-context="${esc(c.id)}"${c.id === context.id ? ' aria-current="true"' : ''}>
-        <span>${esc(c.name)}</span><span class="small opacity-75">${esc(c.role)}</span>
+        <span class="avatar avatar-square avatar-sm avatar-${esc(c.tone)}" aria-hidden="true">${esc(c.initials)}</span>
+        <span class="context-item-text"><span>${esc(c.name)}</span><span class="context-item-role">${esc(c.role)}</span></span>
+        ${c.id === context.id ? '<i class="bi bi-check2 ms-auto" aria-hidden="true"></i>' : ''}
       </button></li>`,
     )
-    .join('');
+    .join('')}`;
 }
 
 function renderPage(context, route) {
@@ -227,8 +234,34 @@ document.addEventListener('click', (event) => {
 
 el.page.addEventListener('submit', (event) => {
   event.preventDefault();
-  const status = el.page.querySelector('[data-form-status]');
-  if (status) status.textContent = 'Demo: изменения не сохраняются.';
+  const status = event.target.querySelector('[data-form-status]');
+  if (status) status.textContent = 'Сохранено в demo, на сервер ничего не ушло.';
+});
+
+el.page.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-end-session]');
+  if (!button) return;
+  ui.endedSessions.add(button.dataset.endSession);
+  render();
+  announce('Сеанс завершён.');
+  // кнопка исчезла вместе со строкой — фокус на заголовок списка
+  el.page.querySelector('#sessions-title')?.focus();
+});
+
+// Подсказка над столбцом графика: hit-зона — вся высота столбца.
+el.page.addEventListener('pointerover', (event) => {
+  const col = event.target.closest('[data-tip]');
+  if (!col) return;
+  const box = col.getBoundingClientRect();
+  el.tooltip.textContent = col.dataset.tip;
+  el.tooltip.hidden = false;
+  const tip = el.tooltip.getBoundingClientRect();
+  const left = Math.min(Math.max(8, box.left + box.width / 2 - tip.width / 2), window.innerWidth - tip.width - 8);
+  el.tooltip.style.left = `${left + window.scrollX}px`;
+  el.tooltip.style.top = `${box.top + window.scrollY - tip.height - 8}px`;
+});
+el.page.addEventListener('pointerout', (event) => {
+  if (event.target.closest('[data-tip]') && !event.relatedTarget?.closest?.('[data-tip]')) el.tooltip.hidden = true;
 });
 
 onRoute();

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Shell</title>
+  <meta name="description" content="Открытый demo оболочки кабинета на Bootstrap 5: меню, Offcanvas и крошки из одного реестра маршрутов, переключатель контекста.">
+  <link rel="stylesheet" href="vendor/bootstrap-5.3.8/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons-1.13.1/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="src/shell.css">
+  <script src="vendor/bootstrap-5.3.8/bootstrap.bundle.min.js" defer></script>
+  <script src="src/shell.js" type="module"></script>
+</head>
+<body>
+  <a class="skip-link visually-hidden-focusable" href="#main">Перейти к содержимому</a>
+
+  <div class="shell">
+    <aside class="shell-sidebar">
+      <div class="offcanvas-lg offcanvas-start" id="sidebar" tabindex="-1" aria-labelledby="sidebar-label">
+        <div class="offcanvas-header border-bottom">
+          <h2 class="offcanvas-title h5" id="sidebar-label">Меню</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Закрыть меню"></button>
+        </div>
+        <div class="offcanvas-body flex-column">
+          <div class="brand d-none d-lg-flex align-items-center gap-2">
+            <i class="bi bi-window-sidebar text-primary" aria-hidden="true"></i>
+            <span>Dashboard Shell</span>
+          </div>
+          <nav id="nav" aria-label="Основное меню"></nav>
+        </div>
+      </div>
+    </aside>
+
+    <div class="shell-main">
+      <header class="topbar sticky-top bg-body border-bottom">
+        <button type="button" class="btn btn-outline-secondary d-lg-none" id="menu-toggle"
+                aria-controls="sidebar" aria-expanded="false" aria-label="Открыть меню">
+          <i class="bi bi-list" aria-hidden="true"></i>
+        </button>
+
+        <nav class="topbar-crumbs" aria-label="Хлебные крошки">
+          <ol class="breadcrumb mb-0" id="crumbs"></ol>
+        </nav>
+
+        <div class="dropdown topbar-context">
+          <button type="button" class="btn btn-light border dropdown-toggle context-button" id="context-button"
+                  data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="visually-hidden">Пространство: </span>
+            <span class="context-name" id="context-name"></span>
+            <span class="context-role small text-body-secondary d-none d-sm-inline" id="context-role"></span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" id="context-menu" aria-labelledby="context-button"></ul>
+        </div>
+      </header>
+
+      <main id="main" class="container-fluid py-4 px-3 px-md-4">
+        <h1 id="page-title" class="h3 mb-3" tabindex="-1"></h1>
+        <div id="page"></div>
+      </main>
+    </div>
+  </div>
+
+  <div id="announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

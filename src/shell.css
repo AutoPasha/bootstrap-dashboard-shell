@@ -1,0 +1,142 @@
+/* Каркас оболочки. Всё остальное — штатные классы Bootstrap 5.3. */
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.shell-main {
+  flex: 1 1 auto;
+  min-width: 0; /* без этого длинное содержимое растягивает страницу вбок */
+}
+
+/* Одна разметка меню: Offcanvas до lg, колонка sidebar от lg. */
+.offcanvas-lg {
+  --bs-offcanvas-width: min(18rem, 85vw);
+}
+
+@media (min-width: 992px) {
+  .shell-sidebar {
+    flex: 0 0 16.5rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+  }
+
+  .shell-sidebar .offcanvas-body {
+    padding: 1rem 0.75rem;
+  }
+}
+
+.brand {
+  padding: 0.25rem 0.75rem 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.nav-section-title {
+  margin: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+
+.nav-pills .nav-link {
+  color: var(--bs-body-color);
+}
+
+.nav-pills .nav-link.active {
+  color: #fff;
+}
+
+.nav-pills .nav-link.active .badge {
+  background-color: #fff !important;
+  color: var(--bs-primary) !important;
+}
+
+/* Родитель текущей страницы (Профиль, когда открыта Безопасность). */
+.nav-pills .nav-link.is-trail {
+  font-weight: 600;
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Topbar: на узком экране крошки уходят второй строкой. */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 1rem;
+}
+
+.topbar-crumbs {
+  order: 3;
+  flex: 1 0 100%;
+  min-width: 0;
+}
+
+.topbar-context {
+  margin-left: auto;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .topbar-crumbs {
+    order: 0;
+    flex: 1 1 auto;
+  }
+
+  .topbar-context {
+    margin-left: 0;
+  }
+}
+
+.context-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.context-name {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 399.98px) {
+  .context-name {
+    max-width: 10rem;
+  }
+}
+
+#page-title {
+  scroll-margin-top: 6rem;
+}
+
+.tile {
+  color: var(--bs-body-color);
+  transition: border-color 0.15s ease-in-out;
+}
+
+.tile:hover,
+.tile:focus-visible {
+  border-color: var(--bs-primary);
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1090;
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--bs-primary);
+  border-radius: var(--bs-border-radius);
+  background: var(--bs-body-bg);
+}

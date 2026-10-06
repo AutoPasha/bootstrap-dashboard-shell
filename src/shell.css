@@ -738,6 +738,8 @@ kbd {
   letter-spacing: -0.02em;
   line-height: 1.1;
   scroll-margin-top: 5rem;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .page-title:focus {
@@ -746,7 +748,8 @@ kbd {
 
 .page-title:focus-visible {
   outline: 2.5px solid var(--accent);
-  outline-offset: 6px;
+  outline-offset: 4px;
+  border-radius: 6px;
 }
 
 .page-lead {

@@ -101,12 +101,12 @@ function renderContextSwitcher(context) {
   el.ctxName.textContent = context.name;
   el.ctxRole.textContent = context.role;
   el.ctxAvatar.textContent = context.initials;
-  el.ctxAvatar.className = `avatar avatar-square avatar-sm avatar-${context.tone}`;
+  el.ctxAvatar.className = 'avatar avatar-square avatar-sm avatar-accent';
   el.ctxMenu.innerHTML = `<li><h2 class="dropdown-header">Пространства</h2></li>${contexts
     .map(
       (c) => `<li><button type="button" class="dropdown-item context-item${c.id === context.id ? ' is-current' : ''}"
         data-switch-context="${esc(c.id)}"${c.id === context.id ? ' aria-current="true"' : ''}>
-        <span class="avatar avatar-square avatar-sm avatar-${esc(c.tone)}" aria-hidden="true">${esc(c.initials)}</span>
+        <span class="avatar avatar-square avatar-sm${c.id === context.id ? ' avatar-accent' : ''}" aria-hidden="true">${esc(c.initials)}</span>
         <span class="context-item-text"><span>${esc(c.name)}</span><span class="context-item-role">${esc(c.role)}</span></span>
         ${c.id === context.id ? '<i class="bi bi-check2 ms-auto" aria-hidden="true"></i>' : ''}
       </button></li>`,

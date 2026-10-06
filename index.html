@@ -16,7 +16,7 @@
       try { if (localStorage.getItem('demo-shell:collapsed') === '1') document.documentElement.classList.add('is-collapsed'); } catch (e) {}
     })();
   </script>
-  <link rel="preload" href="vendor/inter-4/inter-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/ibm-plex-sans/ibm-plex-sans-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="vendor/bootstrap-5.3.8/bootstrap.min.css">
   <link rel="stylesheet" href="vendor/bootstrap-icons-1.13.1/bootstrap-icons.min.css">
   <link rel="stylesheet" href="src/shell.css">
@@ -30,7 +30,7 @@
     <aside class="shell-sidebar" data-bs-theme="dark">
       <div class="offcanvas-lg offcanvas-start sidebar" id="sidebar" tabindex="-1" aria-labelledby="sidebar-label">
         <div class="sidebar-brand">
-          <span class="brand-mark" aria-hidden="true"><i class="bi bi-layers-fill"></i></span>
+          <span class="brand-mark" aria-hidden="true"></span>
           <span class="brand-name" id="sidebar-label">Dashboard Shell</span>
           <button type="button" class="btn-close d-lg-none ms-auto" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Закрыть меню"></button>
         </div>
@@ -88,7 +88,7 @@
         </div>
 
         <a class="topbar-user" href="#/app/account" aria-label="Профиль" title="Профиль">
-          <span class="avatar avatar-blue" aria-hidden="true">АД</span>
+          <span class="avatar" aria-hidden="true">АД</span>
         </a>
       </header>
 

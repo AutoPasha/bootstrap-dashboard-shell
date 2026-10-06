@@ -49,7 +49,6 @@ function kpi(k) {
         </span>`;
   return `<div class="col-6 col-xl-3">
     <div class="card panel kpi h-100">
-      <div class="kpi-icon" aria-hidden="true"><i class="bi bi-${esc(k.icon)}"></i></div>
       <div class="kpi-label">${esc(k.label)}</div>
       <div class="kpi-value" data-stat>${esc(k.value)}</div>
       <div class="kpi-trend">${trend}<span class="kpi-period">к прошлой неделе</span></div>
@@ -76,7 +75,7 @@ function barChart(values) {
         <div class="chart-bars">
           ${days
             .map(
-              (d) => `<div class="chart-col" data-tip="${esc(d.label)}: ${d.value} ${plural(d.value, 'задача', 'задачи', 'задач')}">
+              (d, i) => `<div class="chart-col${i === days.length - 1 ? ' is-today' : ''}" data-tip="${esc(d.label)}: ${d.value} ${plural(d.value, 'задача', 'задачи', 'задач')}">
                 <div class="chart-bar${d.value === 0 ? ' is-zero' : ''}" style="height:${(d.value / top) * 100}%"></div>
               </div>`,
             )
@@ -100,7 +99,7 @@ const taskRows = (tasks) => `
       (t) => `<li class="row-item task">
         <span class="task-title">${esc(t.title)}</span>
         <span class="task-who">${avatar(t.who, 'avatar-sm')}<span>${esc(t.who.name)}</span></span>
-        <span class="task-status"><span class="badge status status-${esc(t.tone)}">${esc(t.status)}</span></span>
+        <span class="task-status"><span class="status status-${esc(t.tone)}">${esc(t.status)}</span></span>
         <span class="task-due"><i class="bi bi-calendar3" aria-hidden="true"></i> ${esc(t.due)}</span>
       </li>`,
     )
@@ -163,7 +162,7 @@ export const pages = {
               (i) => `<li><a class="row-item row-link" href="${i.href}">
                 <span class="quick-icon" aria-hidden="true"><i class="bi bi-${esc(i.icon)}"></i></span>
                 <span class="me-auto">${esc(i.title)}</span>
-                <i class="bi bi-chevron-right text-muted-2" aria-hidden="true"></i></a></li>`,
+                <i class="bi bi-arrow-right" aria-hidden="true"></i></a></li>`,
             )
             .join('')}</ul>
           <p class="panel-note">Этот список, меню и крошки собраны из одного реестра маршрутов.</p>`,
@@ -208,25 +207,41 @@ export const pages = {
         (c) => `<div class="col-12 col-md-6 col-xl-4">
         <div class="card panel workspace h-100${c.id === ctx.id ? ' is-current' : ''}">
           <div class="d-flex align-items-center gap-3">
-            ${avatar(c, 'avatar-lg avatar-square')}
+            ${avatar(c, `avatar-lg avatar-square${c.id === ctx.id ? ' avatar-accent' : ''}`)}
             <div class="min-w-0">
-              <div class="fw-semibold text-truncate">${esc(c.name)}</div>
+              <div class="workspace-name text-truncate">${esc(c.name)}</div>
               <div class="text-muted-2">${esc(c.role)}</div>
             </div>
           </div>
           <div class="workspace-meta">
-            <span class="avatar-stack">${c.members.slice(0, 4).map((m) => avatar(m, 'avatar-sm')).join('')}</span>
+            <span class="avatar-stack">${c.members.slice(0, 4).map((m) => avatar(m)).join('')}</span>
             <span class="text-muted-2">${c.members.length} ${plural(c.members.length, 'участник', 'участника', 'участников')}</span>
           </div>
           <div class="mt-auto">${
             c.id === ctx.id
-              ? '<span class="badge status status-success"><i class="bi bi-check2" aria-hidden="true"></i> Вы здесь</span>'
+              ? '<span class="here"><i class="bi bi-check2" aria-hidden="true"></i> Вы здесь</span>'
               : `<button type="button" class="btn btn-outline-primary btn-sm" data-switch-context="${esc(c.id)}">Перейти в «${esc(c.short)}»</button>`
           }</div>
         </div>
       </div>`,
       )
-      .join('')}</div>`,
+      .join('')}</div>
+    <div class="mt-3">
+      ${card(
+        'Что меняется при переключении',
+        `<ul class="rows">
+          <li class="row-item change-row"><span class="change-what">Адрес страницы</span>
+            <span class="text-muted-2">Остаётся тем же: маршруты от пространства не зависят.</span></li>
+          <li class="row-item change-row"><span class="change-what">Меню и крошки</span>
+            <span class="text-muted-2">Те же разделы и подписи из реестра. Счётчики свои, «Настройки команды» есть только у команд.</span></li>
+          <li class="row-item change-row"><span class="change-what">Данные страниц</span>
+            <span class="text-muted-2">Свои у каждого пространства: задачи, события, участники, роль.</span></li>
+          <li class="row-item change-row"><span class="change-what">Страница без смысла</span>
+            <span class="text-muted-2">Если раздела в новом пространстве нет, оболочка открывает обзор и говорит об этом.</span></li>
+        </ul>`,
+        { flush: true },
+      )}
+    </div>`,
 
   '/app/settings': (ctx) => `
     <p class="page-lead">Настройки есть только у командных пространств. Сейчас открыто «${esc(ctx.short)}».</p>
@@ -275,7 +290,7 @@ export const pages = {
             `<ul class="rows">${ctx.members
               .map(
                 (m) => `<li class="row-item">${avatar(m)}<span class="me-auto">${esc(m.name)}</span>
-                  <span class="badge status status-secondary">${esc(m.role)}</span></li>`,
+                  <span class="status status-secondary">${esc(m.role)}</span></li>`,
               )
               .join('')}</ul>`,
             { flush: true },
@@ -291,9 +306,9 @@ export const pages = {
       <div class="col-12 col-lg-4">
         <div class="card panel profile h-100">
           ${avatar(user, 'avatar-xl')}
-          <div class="fs-5 fw-semibold mt-3">${esc(user.name)}</div>
+          <div class="profile-name">${esc(user.name)}</div>
           <div class="text-muted-2">${esc(user.email)}</div>
-          <div class="mt-3"><span class="badge status status-primary" data-role>${esc(ctx.role)} · ${esc(ctx.short)}</span></div>
+          <div class="mt-3"><span class="status status-primary" data-role>${esc(ctx.role)} · ${esc(ctx.short)}</span></div>
         </div>
       </div>
       <div class="col-12 col-lg-8">
@@ -333,7 +348,7 @@ export const pages = {
             <input class="form-check-input" type="checkbox" role="switch" id="twofa" checked>
             <label class="form-check-label" for="twofa">Включено</label>
           </div>`,
-          { action: '<span class="badge status status-success"><i class="bi bi-shield-check" aria-hidden="true"></i> Защищено</span>' },
+          { action: '<span class="status status-success"><i class="bi bi-shield-check" aria-hidden="true"></i> Защищено</span>' },
         )}
       </div>
       <div class="col-12 col-lg-6">
@@ -357,7 +372,7 @@ export const pages = {
                 <div class="text-muted-2">${esc(s.place)} · ${s.current ? 'этот сеанс' : esc(s.when)}</div></div>
                 ${
                   s.current
-                    ? '<span class="badge status status-success">Вы здесь</span>'
+                    ? '<span class="status status-success">Вы здесь</span>'
                     : `<button type="button" class="btn btn-sm btn-outline-danger" data-end-session="${esc(s.id)}">Завершить<span class="visually-hidden"> сеанс ${esc(s.device)}</span></button>`
                 }
               </li>`,

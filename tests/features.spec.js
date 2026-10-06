@@ -85,7 +85,7 @@ test('тёмная тема включается и переживает пер�
   }
   await expect(page.locator('html')).toHaveAttribute('data-bs-theme', 'dark');
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe('rgb(10, 16, 32)');
+  expect(bg).toBe('rgb(14, 20, 17)');
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-bs-theme', 'dark');

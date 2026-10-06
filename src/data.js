@@ -35,7 +35,7 @@ export const contexts = [
       { label: 'Открытые задачи', value: 12, delta: -3, good: 'down', icon: 'list-check' },
       { label: 'Закрыто за неделю', value: 31, delta: 6, good: 'up', icon: 'check2-circle' },
       { label: 'Первый ответ', value: '1 ч 40 мин', delta: -12, unit: 'мин', good: 'down', icon: 'chat-left-text' },
-      { label: 'Участники', value: 8, delta: 1, good: 'up', icon: 'people' },
+      { label: 'Участники', value: 4, delta: 1, good: 'up', icon: 'people' },
     ],
     closedByDay: [3, 5, 2, 6, 4, 1, 0, 4, 7, 5, 6, 3, 1, 2],
     tasks: [
@@ -74,7 +74,7 @@ export const contexts = [
       { label: 'Открытые задачи', value: 27, delta: 5, good: 'down', icon: 'list-check' },
       { label: 'Закрыто за неделю', value: 9, delta: -4, good: 'up', icon: 'check2-circle' },
       { label: 'Первый ответ', value: '3 ч 05 мин', delta: 25, unit: 'мин', good: 'down', icon: 'chat-left-text' },
-      { label: 'Участники', value: 4, delta: 0, good: 'up', icon: 'people' },
+      { label: 'Участники', value: 2, delta: 0, good: 'up', icon: 'people' },
     ],
     closedByDay: [1, 0, 2, 1, 3, 0, 0, 1, 2, 1, 0, 2, 1, 1],
     tasks: [

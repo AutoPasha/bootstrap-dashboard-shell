@@ -1,0 +1,29 @@
+name: safari-probe
+
+on:
+  push:
+    branches: [qa/safari-probe]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Safari ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo safaridriver --enable
+      - run: python3 -m pip install --break-system-packages selenium==4.27.1 || python3 -m pip install selenium==4.27.1
+      - run: python3 qa-probe/probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-${{ matrix.os }}
+          path: qa-probe-report.json

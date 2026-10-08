@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Экран A</title>
+<style>body{font:28px -apple-system,sans-serif;margin:40px} .x{colr:red}</style></head>
+<body><h1>Экран A: проба консоли Safari</h1>
+<p>Ожидаем в консоли: CSP (встроенный скрипт), CORS (fetch на :8766), 404 (картинка), console.error.</p>
+<img src="/missing-a.png" alt="">
+<script>console.log("встроенный скрипт выполнился — CSP не сработал");</script>
+<script src="/page.js"></script>
+</body></html>

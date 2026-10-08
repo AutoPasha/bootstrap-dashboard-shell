@@ -105,13 +105,31 @@ for dom in ["com.apple.Safari",
                 "com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled"]:
         step(f"defaults {key}", ["defaults", "write", dom, key, "-bool", "true"])
 
+# Safari 17+ берёт меню «Разработка» из домена SandboxBroker
+step("defaults SandboxBroker ShowDevelopMenu", ["defaults", "write", "com.apple.Safari.SandboxBroker", "ShowDevelopMenu", "-bool", "true"])
+step("проверка SandboxBroker", ["defaults", "read", "com.apple.Safari.SandboxBroker"])
+
 # Путь B: обычное окно Safari, без Apple Events к самому Safari (запрос разрешения там висит)
 step("B: open -a Safari", ["open", "-a", "Safari", url("a")])
 time.sleep(8)
 shot("B0", "start")
 osa("B: размер окна", 'tell application "System Events" to tell process "Safari" to set {position, size} of front window to {{0, 25}, {1280, 875}}')
 osa("B: меню Safari", 'tell application "System Events" to tell process "Safari" to get name of menus of menu bar 1')
-osa("B: пункты Develop", 'tell application "System Events" to tell process "Safari" to get name of menu items of menu "Develop" of menu bar 1')
+r = osa("B: пункты Develop", 'tell application "System Events" to tell process "Safari" to get name of menu items of menu "Develop" of menu bar 1')
+if r.returncode:
+    # Запасной путь: Настройки → Дополнения → «Показывать функции для веб-разработчиков»
+    osa("B: Cmd+,", 'tell application "System Events" to keystroke "," using {command down}')
+    time.sleep(3)
+    osa("B: вкладки настроек", 'tell application "System Events" to tell process "Safari" to get name of buttons of toolbar 1 of window 1')
+    osa("B: вкладка Advanced", 'tell application "System Events" to tell process "Safari" to click button "Advanced" of toolbar 1 of window 1')
+    time.sleep(2)
+    osa("B: флажки Advanced", 'tell application "System Events" to tell process "Safari" to get name of checkboxes of group 1 of group 1 of window 1')
+    osa("B: включить разработку", 'tell application "System Events" to tell process "Safari" to click (first checkbox of group 1 of group 1 of window 1 whose name contains "web developers")')
+    time.sleep(1)
+    shot("B1", "settings")
+    osa("B: закрыть настройки", 'tell application "System Events" to keystroke "w" using {command down}')
+    time.sleep(1)
+    osa("B: пункты Develop 2", 'tell application "System Events" to tell process "Safari" to get name of menu items of menu "Develop" of menu bar 1')
 for s in SCREENS:
     if s != "a":
         step(f"B: переход {s}", ["open", "-a", "Safari", url(s)])
@@ -121,8 +139,12 @@ for s in SCREENS:
 step("B: закрыть Safari", ["pkill", "-x", "Safari"])
 time.sleep(3)
 
-# Путь A: окно сессии safaridriver
+# Путь A: окно сессии safaridriver. Прогон 37764147524: Cmd+Opt+C в окне автоматизации
+# повесил сессию (ReadTimeout 120 с), включается только по PROBE_A=1
+import os
 try:
+    if os.environ.get("PROBE_A") != "1":
+        raise RuntimeError("путь A пропущен")
     from selenium import webdriver
     d = webdriver.Safari()
     d.set_window_rect(x=0, y=25, width=1280, height=875)

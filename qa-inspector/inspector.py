@@ -25,7 +25,11 @@ report = {"os": platform.mac_ver()[0], "steps": []}
 
 
 def step(name, cmd, timeout=40):
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        # чаще всего висит системный запрос разрешения: снимок покажет, какой
+        r = subprocess.CompletedProcess(cmd, 124, "", f"завис дольше {timeout} с")
     rec = {"step": name, "rc": r.returncode,
            "out": r.stdout.strip()[:600], "err": r.stderr.strip()[:600]}
     report["steps"].append(rec)
@@ -33,8 +37,8 @@ def step(name, cmd, timeout=40):
     return r
 
 
-def osa(name, script):
-    return step(name, ["osascript", "-e", script])
+def osa(name, script, timeout=20):
+    return step(name, ["osascript", "-e", script], timeout)
 
 
 class Main(http.server.SimpleHTTPRequestHandler):
@@ -101,21 +105,20 @@ for dom in ["com.apple.Safari",
                 "com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled"]:
         step(f"defaults {key}", ["defaults", "write", dom, key, "-bool", "true"])
 
-# Путь B: обычное окно Safari
+# Путь B: обычное окно Safari, без Apple Events к самому Safari (запрос разрешения там висит)
 step("B: open -a Safari", ["open", "-a", "Safari", url("a")])
 time.sleep(8)
-osa("B: activate + bounds", 'tell application "Safari"\nactivate\nset bounds of front window to {0, 25, 1280, 900}\nend tell')
-time.sleep(1)
+shot("B0", "start")
+osa("B: размер окна", 'tell application "System Events" to tell process "Safari" to set {position, size} of front window to {{0, 25}, {1280, 875}}')
 osa("B: меню Safari", 'tell application "System Events" to tell process "Safari" to get name of menus of menu bar 1')
-report["B_console_keystroke"] = open_console("B")
+osa("B: пункты Develop", 'tell application "System Events" to tell process "Safari" to get name of menu items of menu "Develop" of menu bar 1')
 for s in SCREENS:
     if s != "a":
-        osa(f"B: переход {s}", f'tell application "Safari" to set URL of current tab of front window to "{url(s)}"')
+        step(f"B: переход {s}", ["open", "-a", "Safari", url(s)])
         time.sleep(5)
+    report[f"B_console_{s}"] = open_console("B")
     shot("B", s)
-# Запасной путь: пункт меню вместо сочетания
-osa("B: пункт меню консоли", 'tell application "System Events" to tell process "Safari" to get name of menu items of menu "Develop" of menu bar 1')
-step("B: закрыть Safari", ["osascript", "-e", 'tell application "Safari" to quit'])
+step("B: закрыть Safari", ["pkill", "-x", "Safari"])
 time.sleep(3)
 
 # Путь A: окно сессии safaridriver
@@ -125,12 +128,11 @@ try:
     d.set_window_rect(x=0, y=25, width=1280, height=875)
     d.get(url("a"))
     time.sleep(3)
-    osa("A: activate", 'tell application "Safari" to activate')
-    report["A_console_keystroke"] = open_console("A")
     for s in SCREENS:
         if s != "a":
             d.get(url(s))
             time.sleep(4)
+        report[f"A_console_{s}"] = open_console("A")
         shot("A", s)
     d.quit()
 except Exception as e:  # noqa: BLE001

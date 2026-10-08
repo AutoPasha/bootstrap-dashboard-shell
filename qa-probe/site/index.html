@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>safari probe</title>
+<style>body{margin:0;font:16px system-ui}.bar{height:40px;background:#ccc}</style>
+<script>console.error("probe: console.error при начальной загрузке");</script>
+<script src="/missing.js"></script>
+</head>
+<body>
+<div class="bar"></div>
+<img src="/missing.png" alt="">
+<script>
+  undefinedFunctionCall();
+</script>
+<script>
+  Promise.reject(new Error("probe: отклонённый промис"));
+  fetch("/api/fail");
+  setTimeout(function () { console.error("probe: отложенная ошибка"); }, 300);
+</script>
+</body>
+</html>
